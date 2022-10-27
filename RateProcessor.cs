@@ -10,15 +10,20 @@ namespace Bitcoin.Functions
     {
         [FunctionName("RateProcessor")]
         [return: Table("RatesTable")]
-        public static TableData Run([QueueTrigger("testqueue", Connection = "AzureWebJobsStorage")]string myQueueItem, ILogger log)
+        public static TableData Run([QueueTrigger("ratesqueue", Connection = "AzureWebJobsStorage")]string myQueueItem, ILogger log)
         {
             var data = JsonConvert.DeserializeObject<CombinedDTO>(myQueueItem);
             log.LogInformation($"C# Queue trigger function processed: {data.BitcoinDTO.bpi.USD.rate_float}");
             log.LogInformation($"C# Queue trigger function processed: {data.ExchangeRateDTO.conversion_rates.SEK}");
-            return new TableData(data.BitcoinDTO.chartName, $"{(DateTimeOffset.MaxValue.Ticks-data.BitcoinDTO.time.updatedISO.Ticks):d10}-{Guid.NewGuid():N}", data.BitcoinDTO.bpi.USD.rate_float,data.ExchangeRateDTO.conversion_rates.SEK, data.BitcoinDTO.bpi.USD.rate_float * data.ExchangeRateDTO.conversion_rates.SEK);
+            int roundedBCfloat = (int)((float)Math.Round(data.BitcoinDTO.bpi.USD.rate_float, 2) *100);
+            int roundedSEKfloat = (int)(data.ExchangeRateDTO.conversion_rates.SEK *10000);
+            
+
+            
+            return new TableData(data.BitcoinDTO.chartName, $"{(DateTimeOffset.MaxValue.Ticks-data.BitcoinDTO.time.updatedISO.Ticks):d10}-{Guid.NewGuid():N}", roundedBCfloat, roundedSEKfloat);
         }
     }
-        public record TableData(string PartitionKey, string RowKey, float BitCoinRate, float SEKRate, float SEKperBC);
+        public record TableData(string PartitionKey, string RowKey, int BitCoinRate, int SEKRate );
 public class CombinedDTO{
     public BitCoinDTO BitcoinDTO {get; set;}
     public ExchangeRateDTO ExchangeRateDTO {get; set;}

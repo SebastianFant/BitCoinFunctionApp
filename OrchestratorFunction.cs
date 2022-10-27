@@ -13,7 +13,7 @@ namespace Bitcoin.Function
     {
         [FunctionName("OrchestratorFunction")]
         public static async Task RunOrchestrator(
-            [OrchestrationTrigger] IDurableOrchestrationContext context, [Queue("testqueue"),StorageAccount("AzureWebJobsStorage")] ICollector<string> msg)
+            [OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             string outputs ="{\"BitcoinDTO\":";
 
@@ -22,8 +22,8 @@ namespace Bitcoin.Function
             outputs += ",\"ExchangeRateDTO\":";
             outputs += (await context.CallActivityAsync<string>(nameof(GetExchangeRate), "https://v6.exchangerate-api.com/v6/6c3a3f678dca8ef7edfd1369/latest/USD"));
             outputs += "}";
-            
-            msg.Add(outputs);
+            await context.CallActivityAsync(nameof(QueueFunction), outputs);
+            //msg.Add(outputs);
             
             
         }
@@ -49,11 +49,28 @@ namespace Bitcoin.Function
                 var content = await response.Content.ReadAsStringAsync();
                 return content;
             }
-            log.LogInformation($"Saying hello");
+            
             return "";
         }
+        [FunctionName(nameof(QueueFunction))]
+        public static void QueueFunction([ActivityTrigger] string outputs, [Queue("ratesqueue"),StorageAccount("AzureWebJobsStorage")] ICollector<string> msg, ILogger log)
+        {
+            msg.Add(outputs);
+        }
+        [FunctionName("Timer")]
+        public static async Task RunScheduled(
+            [TimerTrigger("0 * * * * *")] TimerInfo timerinfo,
+            [DurableClient] IDurableClient starter,
+            ILogger log)
+        {
+            // Function input comes from the request content.
+            string instanceId = await starter.StartNewAsync("OrchestratorFunction", null);
 
-        [FunctionName("OrchestratorFunction_HttpStart")]
+            log.LogInformation($"Started orchestration with ID = '{instanceId}'.");
+            
+            
+        }
+/*         [FunctionName("OrchestratorFunction_HttpStart")]
         public static async Task<HttpResponseMessage> HttpStart(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")] HttpRequestMessage req,
             [DurableClient] IDurableOrchestrationClient starter,
@@ -65,6 +82,7 @@ namespace Bitcoin.Function
             log.LogInformation($"Started orchestration with ID = '{instanceId}'.");
 
             return starter.CreateCheckStatusResponse(req, instanceId);
-        }
+        } */
+
     }
 }
