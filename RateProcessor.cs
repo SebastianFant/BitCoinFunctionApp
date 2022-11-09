@@ -1,6 +1,5 @@
 using System;
 using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
@@ -18,13 +17,11 @@ namespace Bitcoin.Functions
             int roundedBCfloat = (int)((float)Math.Round(data.BitcoinDTO.bpi.USD.rate_float, 2) *100);
             int roundedSEKfloat = (int)(data.ExchangeRateDTO.conversion_rates.SEK *10000);
             
-
-            
             return new TableData(data.BitcoinDTO.chartName, $"{(DateTimeOffset.MaxValue.Ticks-data.BitcoinDTO.time.updatedISO.Ticks):d10}-{Guid.NewGuid():N}", roundedBCfloat, roundedSEKfloat);
         }
     }
-        public record TableData(string PartitionKey, string RowKey, int BitCoinRate, int SEKRate );
-public class CombinedDTO{
+    public record TableData(string PartitionKey, string RowKey, int BitCoinRate, int SEKRate );
+    public class CombinedDTO{
     public BitCoinDTO BitcoinDTO {get; set;}
     public ExchangeRateDTO ExchangeRateDTO {get; set;}
 }
